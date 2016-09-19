@@ -35,21 +35,45 @@ class Algorithm:
         self.nature = Nature()
 
     def wma(self):
+        fig1 = plt.figure(1)
+        plt.xlabel('Time')
+        plt.ylabel('Avg Regret')
+        fig2 = plt.figure(2)
+        plt.xlabel('Expert Loss')
+        plt.ylabel('Online Learner Loss')
+        color=['ro','go','bo']
+        legend=['Always Yes','Always No','Alternate']
         self.regret = [0.0,0.0,0.0]
         w = [1.0,1.0,1.0]
         eta = 0.4
         learner_loss = 0
-        for t in range(1000):
+        expert_loss = [0,0,0]
+        for t in range(100):
             xt = self.expert.get_x(t)
             yt_hat = -1 if sum(i[0]*i[1] for i in zip(w,xt)) <= 0 else 1
             yt = self.nature.get_stoch_y()
+            learner_loss = learner_loss + (0 if yt == yt_hat else 1)
             for i in range(len(xt)):
-                learner_loss = learner_loss + (0 if yt == yt_hat else 1)
+                expert_loss[i] = expert_loss[i] + (0 if yt == xt[i] else 1)
                 w[i] = w[i]*(1 - eta * (0 if yt == xt[i] else 1))
-                self.regret[i] = self.regret[i] + (0 if yt == yt_hat else 1) - (0 if yt == xt[i] else 1)
-            print "xt=" + str(xt) + " yt=" + str(yt) +  " yt_hat=" + str(yt_hat) + " w=" + str(w) + " r=" + str(self.regret)
-            plt.plot(t, (self.regret[0]+self.regret[1]+self.regret[2])/3, 'ro')
-        plt.show()
+                self.regret[i] = self.regret[i] + (0 if yt == yt_hat else 1) \
+                                 - (0 if yt == xt[i] else 1)
+                plt.figure(2)
+                """Plot legend only for first time"""
+                if t==0:
+                    plt.plot(expert_loss[i], learner_loss, color[i],
+                         label=legend[i])
+                else:
+                    plt.plot(expert_loss[i], learner_loss, color[i])
+            print "xt=" + str(xt) + " yt=" + str(yt) +  " yt_hat=" + \
+                    str(yt_hat) + " w=" + str(w) + " r=" + str(self.regret)
+            plt.figure(1)
+            plt.plot(t,(self.regret[0]+self.regret[1]+self.regret[2])/3,'ro')
+        fig1.show()
+        plt.figure(2)
+        plt.legend(loc='upper left')
+        fig2.show()
+        raw_input()
 
 def main():
     algorithm = Algorithm()

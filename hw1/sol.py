@@ -126,8 +126,8 @@ class Algorithm:
                 observations = self.nature_with_obs.get_observation()
                 xt = self.expert.get_x_with_obs(t, observations)
                 #yt = self.nature_with_obs.get_stoch_y(observations)
-                yt = self.nature_with_obs.get_determ_y(observations)
-                #yt = self.nature_with_obs.get_adver_y(xt, w)
+                #yt = self.nature_with_obs.get_determ_y(observations)
+                yt = self.nature_with_obs.get_adver_y(xt, w)
 
             yt_hat = -1 if sum(i[0]*i[1] for i in zip(w,xt)) <= 0 else 1
             learner_loss = learner_loss + (0 if yt == yt_hat else 1)
@@ -154,23 +154,37 @@ class Algorithm:
         fig2.show()
         raw_input()
 
-    def rwma(self):
+    def rwma(self, use_obs=0):
         fig1 = plt.figure(1)
         plt.xlabel('Time')
         plt.ylabel('Avg Regret')
         fig2 = plt.figure(2)
         plt.xlabel('Expert Loss')
         plt.ylabel('Online Learner Loss')
-        color=['ro','go','bo','yo','mo']
-        legend=['Always Yes','Always No','Alternate']
-        x = self.expert.get_x(0)
+        color=['ro-','go-','bo-','yo-','mo-','co-']
+        legend=['Always Yes','Always No','Alternate','Obs1','Obs2','Policy']
+        if use_obs == 0:
+            x = self.expert.get_x(0)
+        else:
+            observations = self.nature_with_obs.get_observation()
+            x = self.expert.get_x_with_obs(0, observations)
         w = np.ones(len(x))
         eta = 0.1
         learner_loss = 0
         expert_loss = np.zeros(len(x))
         for t in range(100):
-            xt = self.expert.get_x(t)
-            """Roulette Wheel"""
+            eta = 1/math.sqrt(t+1)
+            if use_obs == 0:
+                xt = self.expert.get_x(t)
+                #yt = self.nature.get_stoch_y()
+                #yt = self.nature.get_determ_y(t)
+                yt = self.nature.get_adver_y(xt, w)
+            else:
+                observations = self.nature_with_obs.get_observation()
+                xt = self.expert.get_x_with_obs(t, observations)
+                #yt = self.nature_with_obs.get_stoch_y(observations)
+                #yt = self.nature_with_obs.get_determ_y(observations)
+                yt = self.nature_with_obs.get_adver_y(xt, w)
             rand_no = random.random()
             norm_w = math.sqrt(sum([i*i for i in w]))
             cum_prob = 0
@@ -178,9 +192,6 @@ class Algorithm:
                 cum_prob = cum_prob + w[i]/norm_w
                 if rand_no <= cum_prob:
                     yt_hat = xt[i]
-            yt = self.nature.get_stoch_y()
-            #yt = self.nature.get_determ_y(t)
-            #yt = self.nature.get_adver_y(xt, w)
             learner_loss = learner_loss + (0 if yt == yt_hat else 1)
             for i in range(len(xt)):
                 expert_loss[i] = expert_loss[i] + (0 if yt == xt[i] else 1)
@@ -190,12 +201,15 @@ class Algorithm:
                 if t==0:
                     plt.plot(expert_loss[i], learner_loss, color[i],
                          label=legend[i])
+                    if i==len(xt)-1:
+                        plt.plot(t, learner_loss, color[-1], label="Policy")
                 else:
-                    plt.plot(expert_loss[i], learner_loss, color[i])
-            print "xt=" + str(xt) + " yt=" + str(yt) +  " yt_hat=" + \
+                    plt.plot(t,expert_loss[i], color[i])
+                print "xt=" + str(xt) + " yt=" + str(yt) +  " yt_hat=" + \
                     str(yt_hat) + " w=" + str(w) + " ll=" + str(learner_loss) + " el=" + str(expert_loss)
+                plt.plot(t, learner_loss, color[-1])
             plt.figure(1)
-            plt.plot(t,(learner_loss - min(expert_loss))/(t+1),'ro')
+            plt.plot(t, (learner_loss - min(expert_loss))/(t+1), 'ro-')
         fig1.show()
         plt.figure(2)
         plt.legend(loc='upper left')
@@ -204,8 +218,12 @@ class Algorithm:
 
 def main():
     algorithm = Algorithm()
+    # 1 = with Observation
+    # 0 = without Observation
+    # select stoch/determ/adver by uncommenting relevant lines in the functions wma/rwma
     algorithm.wma(0)
-    #algorithm.rwma()
+    #algorithm.wma(1)
+    #algorithm.rwma(0)
 
 if __name__ == "__main__":
     main()
